@@ -1,0 +1,26 @@
+# azure.yaml - Azure Developer CLI configuration for wasslago-api-translation
+name: wasslago-api-translation
+metadata:
+  template: wasslago-api-translation@0.0.1-beta
+
+infra:
+  provider: bicep
+  path: infra
+
+services:
+  api:
+    project: .
+    language: python
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+    env:
+      TEMP_FOLDER: "/tmp/app_temp"
+      DOC_FOLDER: "/home/site/wwwroot/doc"
+      SAVE_DIR: "/home/site/wwwroot/translated"
+      POPPLER_PATH: "/usr/bin"
+
+hooks:
+  postprovision:
+    - az keyvault secret set --vault-name ${AZURE_KEY_VAULT_NAME} --name "GEMINI-API-KEY" --value "${GEMINI_API_KEY}" --only-show-errors
+    - az containerapp update --name ${AZURE_CONTAINER_APP_NAME} --resource-group ${AZURE_RESOURCE_GROUP} --set-env-vars GEMINI_API_KEY=secretref:gemini-api-key --only-show-errors

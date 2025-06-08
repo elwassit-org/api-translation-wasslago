@@ -1,0 +1,77 @@
+# Fixed requirements with resolved dependency conflicts
+# Core web framework
+fastapi>=0.100.0
+uvicorn[standard]>=0.20.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# WebSocket support - explicit dependencies
+websockets>=12.0
+python-multipart>=0.0.6
+
+# HTTP requests
+requests==2.32.3
+aiofiles==24.1.0
+
+# PDF processing
+PyMuPDF==1.25.2
+
+# Data processing - using pre-built wheels to avoid build issues
+pandas>=2.0.0
+numpy<2.0.0
+
+# Google AI/API packages with compatible protobuf
+protobuf>=4.21.0,<6.0.0
+google-ai-generativelanguage>=0.6.0
+google-api-core>=2.24.0
+google-api-python-client>=2.169.0
+google-auth>=2.40.0
+google-auth-httplib2>=0.2.0
+google-generativeai>=0.8.0
+googleapis-common-protos>=1.70.0
+
+# Computer vision
+opencv-python==4.10.0.84
+opencv-contrib-python==4.10.0.84
+pillow==11.0.0
+
+# Machine learning
+torch>=2.0.0
+torchvision>=0.15.0
+ultralytics>=8.3.0
+transformers>=4.47.0
+
+# OCR libraries
+paddleocr>=2.9.0
+paddlepaddle>=3.0.0
+
+# NLP
+spacy>=3.8.0
+
+# Image processing
+imageio>=2.37.0
+scikit-image>=0.24.0
+
+# Utilities
+psutil>=7.0.0
+py-cpuinfo>=9.0.0
+pyclipper>=1.3.0
+charset-normalizer>=3.4.0
+certifi>=2024.8.30
+urllib3>=2.2.3
+idna>=3.10
+
+# Development
+Jinja2>=3.1.6
+MarkupSafe>=3.0.2
+annotated-types>=0.7.0
+typing-extensions>=4.12.2
+
+# Async support
+anyio>=4.6.2
+sniffio>=1.3.1
+starlette>=0.41.3
+
+# SpaCy models
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+xx_sent_ud_sm @ https://github.com/explosion/spacy-models/releases/download/xx_sent_ud_sm-3.8.0/xx_sent_ud_sm-3.8.0-py3-none-any.whl

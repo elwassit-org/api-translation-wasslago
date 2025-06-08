@@ -1,0 +1,84 @@
+# .dockerignore - Exclude unnecessary files from Docker context
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+env-api-flask/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Azure
+.azure/
+azure.env.template
+
+# Documentation
+*.md
+docs/
+doc/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+translated/
+
+# Azure deployment scripts
+deploy-azure.ps1
+deploy-azure.sh
+setup_env.bat
+setup_env.sh
+install_poppler.bat
+
+# Local binaries (not needed in container)
+bin/
+
+# Test files
+test_*.py
+
+# Environment files (secrets should not be in container)
+.env
+azure.env.template
