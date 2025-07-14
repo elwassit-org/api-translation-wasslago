@@ -1,0 +1,85 @@
+# Optimized Azure deployment Dockerfile with network resilience
+FROM python:3.12-slim
+
+# Set environment variables for better package installation
+ENV DEBIAN_FRONTEND=noninteractive
+ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
+
+# Configure apt to be more resilient to network issues
+RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
+    echo 'Acquire::http::Timeout "60";' >> /etc/apt/apt.conf.d/80-retries && \
+    echo 'Acquire::ftp::Timeout "60";' >> /etc/apt/apt.conf.d/80-retries && \
+    echo 'APT::Get::Assume-Yes "true";' >> /etc/apt/apt.conf.d/80-retries && \
+    echo 'APT::Install-Recommends "false";' >> /etc/apt/apt.conf.d/80-retries
+
+# Update package lists with retry mechanism and install essential packages
+RUN for i in 1 2 3; do \
+        apt-get update && break || \
+        (echo "Attempt $i failed, retrying..." && sleep 10); \
+    done && \
+    apt-get install -y --fix-missing --no-install-recommends \
+        ca-certificates \
+        wget \
+        curl \
+        gnupg2 \
+    && rm -rf /var/lib/apt/lists/* || true
+
+# Install poppler-utils and other dependencies with fallback options
+RUN for i in 1 2 3; do \
+        apt-get update && \
+        apt-get install -y --fix-missing --no-install-recommends \
+            poppler-utils \
+            libgl1-mesa-glx \
+            libglib2.0-0 \
+            libsm6 \
+            libxext6 \
+            libxrender-dev \
+            libgomp1 \
+            build-essential \
+        && break || \
+        (echo "Attempt $i failed, retrying..." && sleep 15); \
+    done && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* || true
+
+WORKDIR /app
+
+# Copy requirements and install with increased timeout and retries
+COPY requirements-azure.txt .
+
+# Install Python packages with optimizations
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir --timeout 1000 --retries 5 -r requirements-azure.txt
+
+# Create app user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/temp /app/doc /app/translated /app/models /app/scripts && \
+    chown -R appuser:appuser /app
+
+# Copy application code
+COPY . .
+
+# Copy and set up startup script
+COPY scripts/startup.sh /app/startup.sh
+RUN chmod +x /app/startup.sh
+
+# Set environment variables for Azure Container Apps
+ENV PYTHONPATH=/app
+ENV POPPLER_PATH=/usr/bin
+ENV TEMP_FOLDER=/app/temp
+ENV DOC_FOLDER=/app/doc
+ENV SAVE_DIR=/app/translated
+ENV YOLO_MODEL_PATH=/app/models/yolov11x_best.pt
+
+# Switch to non-root user
+USER appuser
+
+EXPOSE 8000
+
+# Health check for Container Apps
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Use startup script
+CMD ["/app/startup.sh"]

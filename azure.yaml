@@ -13,12 +13,16 @@ services:
     language: python
     host: containerapp
     docker:
-      path: ./Dockerfile
+      path: ./Dockerfile.azure-fixed
     env:
-      TEMP_FOLDER: "/tmp/app_temp"
-      DOC_FOLDER: "/home/site/wwwroot/doc"
-      SAVE_DIR: "/home/site/wwwroot/translated"
+      TEMP_FOLDER: "/app/temp"
+      DOC_FOLDER: "/app/doc"
+      SAVE_DIR: "/app/translated"
       POPPLER_PATH: "/usr/bin"
+      YOLO_MODEL_PATH: "/app/models/yolov11x_best.pt"
+      YOLO_MODEL_FILENAME: "yolov11x_best.pt"
+      AZURE_STORAGE_CONTAINER_NAME: "models"
+      YOLO_MODEL_BLOB_NAME: "yolov11x_best.pt"
 
 hooks:
   postprovision:

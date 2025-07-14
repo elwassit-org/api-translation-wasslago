@@ -106,10 +106,16 @@ class AzureConfig:
     def get_models_path(self) -> str:
         """Get the appropriate models directory path"""
         if self.is_azure:
-            return "/home/site/wwwroot/models"
+            return "/app/models"  # Changed from /home/site/wwwroot/models to /app/models for container
         else:
             return "./models"
     
+    def get_yolo_model_path(self) -> str:
+        """Get the full path to the YOLO model file"""
+        models_dir = self.get_models_path()
+        model_filename = os.getenv("YOLO_MODEL_FILENAME", "yolov11x_best.pt")
+        return os.path.join(models_dir, model_filename)
+
     def ensure_directories_exist(self):
         """Create necessary directories if they don't exist"""
         directories = [

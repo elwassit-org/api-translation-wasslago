@@ -1,0 +1,58 @@
+# Production requirements for Azure Container Apps
+
+# Core web framework
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic==2.10.4
+pydantic-settings==2.6.1
+
+# Azure services
+azure-storage-blob==12.24.0
+azure-identity==1.19.0
+
+# WebSocket and HTTP
+websockets==14.1
+python-multipart==0.0.17
+requests==2.32.3
+aiofiles==24.1.0
+
+# PDF processing
+PyMuPDF==1.25.2
+pdf2image==1.17.0
+pdfplumber==0.10.3
+
+# Data processing
+pandas==2.2.3
+numpy==1.26.4
+
+# Google AI services (compatible versions)
+protobuf==5.29.2
+google-ai-generativelanguage==0.6.10
+google-api-core==2.25.0
+google-api-python-client==2.169.0
+google-auth==2.40.0
+google-auth-httplib2==0.2.0
+google-generativeai==0.8.3
+googleapis-common-protos==1.70.0
+
+# Computer vision
+opencv-python==4.10.0.84
+pillow==11.0.0
+
+# Machine learning - specific versions for stability
+torch==2.5.1
+torchvision==0.20.1
+ultralytics==8.3.57
+
+# OCR
+paddleocr==2.9.1
+paddlepaddle==3.0.0b2
+
+# NLP
+spacy==3.7.6
+spacy-legacy==3.0.12
+spacy-loggers==1.0.5
+
+# Additional utilities
+httpx==0.28.1
+python-dotenv==1.0.1

@@ -1,0 +1,63 @@
+# Lightweight requirements for Azure deployment
+# Core web framework
+fastapi>=0.100.0
+uvicorn[standard]>=0.20.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# Azure services
+azure-storage-blob>=12.24.0
+azure-identity>=1.19.0
+
+# WebSocket support
+websockets>=12.0
+python-multipart>=0.0.6
+
+# HTTP requests
+requests==2.32.3
+aiofiles==24.1.0
+
+# PDF processing
+PyMuPDF==1.25.2
+
+# Data processing - CPU-only versions
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Google AI/API packages
+protobuf>=4.21.0,<6.0.0
+google-generativeai>=0.8.0
+
+# Computer vision - CPU optimized
+opencv-python-headless==4.10.0.84
+pillow==11.0.0
+
+# Machine learning - CPU only
+torch>=2.0.0 --index-url https://download.pytorch.org/whl/cpu
+torchvision>=0.15.0 --index-url https://download.pytorch.org/whl/cpu
+
+# YOLO - CPU optimized
+ultralytics>=8.3.0
+
+# OCR libraries - lightweight
+paddlepaddle>=3.0.0
+paddleocr>=2.9.0
+
+# NLP
+spacy>=3.8.0
+
+# Image processing
+imageio>=2.37.0
+scikit-image>=0.24.0
+
+# Utilities
+psutil>=7.0.0
+charset-normalizer>=3.4.0
+certifi>=2024.8.30
+
+# Async support
+anyio>=4.6.2
+starlette>=0.41.3
+
+# Logging and monitoring
+python-dotenv

@@ -270,8 +270,7 @@ class ScannedPDFOCRExtractor:
         Returns:
             Extracted text with semantic tags
         """
-        try:
-            # Convert PDF to images
+        try:            # Convert PDF to images
             img_list = convert_to_images(file_path)
             if not img_list:
                 logger.error("No images generated from PDF")
@@ -281,30 +280,32 @@ class ScannedPDFOCRExtractor:
             
             for img_path in img_list:
                 try:
-                    
                     # Process each page image
                     # Run OCR
                     ocr_results = self.ocr_engine.ocr(img_path, cls=True)[0]
                     ocr_boxes = format_ocr_results(ocr_results)
                     
-                    # Run layout detection
-                    yolo_results = self.yolo_model(
-                        img_path,
-                        conf=0.3,
-                        iou=0.5,
-                        imgsz=640,
-                        verbose=False
-                    )[0]
+                    # Run layout detection (if YOLO model is available)
+                    if self.yolo_model is not None:
+                        yolo_results = self.yolo_model(
+                            img_path,
+                            conf=0.3,
+                            iou=0.5,
+                            imgsz=640,
+                            verbose=False
+                        )
+                        # Map text to layout labels using YOLO
+                        page_text = self._map_text_to_labels(ocr_boxes, yolo_results)
+                    else:
+                        # Fallback: create simple text structure without YOLO classification
+                        page_text = [{"text": box["text"], "label": "text", "bbox": box["bbox"]} 
+                                   for box in ocr_boxes if box["text"].strip()]
                     
-                    # Map text to layout labels
-                    page_text = self._map_text_to_labels(ocr_boxes, yolo_results)
                     mapped_text.extend(page_text)
                     
                 except Exception as e:
                     logger.error(f"Error processing image {img_path}: {str(e)}")
-                    continue
-            
-            # Convert to final tagged text
+                    continue            # Convert to final tagged text
             return insert_tags(mapped_text)
             
         except Exception as e:
@@ -325,9 +326,18 @@ class ScannedPDFOCRExtractor:
             )
         
         if self.yolo_model is None:
-            self.yolo_model = YOLO(self.yolo_model_path)
-            self.yolo_model.to(self.device)
-            self.yolo_model.fuse()
+            if not os.path.exists(self.yolo_model_path):
+                logger.warning(f"YOLO model not found at {self.yolo_model_path}. Text classification will be disabled.")
+                return
+            
+            try:
+                self.yolo_model = YOLO(self.yolo_model_path)
+                self.yolo_model.to(self.device)
+                self.yolo_model.fuse()
+                logger.info(f"YOLO model loaded successfully from {self.yolo_model_path}")
+            except Exception as e:
+                logger.error(f"Failed to load YOLO model: {e}")
+                self.yolo_model = None
         
 
     def _init_device(self) -> str:

@@ -12,10 +12,9 @@ class Settings(BaseSettings):
     temp_folder: str = azure_config.get_temp_folder()
     save_dir: str = azure_config.get_save_dir()
     poppler_path: str = azure_config.get_poppler_path()
-    
-    # Model and API settings
+      # Model and API settings
     yolo_text_classification: str = os.getenv("YOLO_TEXT_CLASSIFICATION", 
-        f"{azure_config.get_models_path()}/yolov11x_best.pt")
+        azure_config.get_yolo_model_path())
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
 
     # Azure deployment settings (optional)

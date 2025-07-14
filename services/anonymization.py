@@ -53,7 +53,16 @@ class TextAnonymizer:
             model = spacy.load(model_name)
         except Exception as e:
             logger.info(f"[Warning] Failed to load '{model_name}': {e}")
-            model = spacy.load("xx_sent_ud_sm")
+            try:
+                model = spacy.load("xx_sent_ud_sm")
+            except Exception as e2:
+                logger.info(f"[Warning] Failed to load 'xx_sent_ud_sm': {e2}")
+                try:
+                    model = spacy.load("en_core_web_sm")
+                except Exception as e3:
+                    logger.error(f"[Error] Failed to load any spaCy model: {e3}")
+                    # Create a blank model as absolute fallback
+                    model = spacy.blank("en")
 
         cls._model_cache[lang] = model
         return model
