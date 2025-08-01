@@ -13,20 +13,47 @@ logger = logging.getLogger(__name__)
 class TranslationError(Exception):
     pass
 
+class RateLimitManager:
+    """Manages rate limiting for Gemini API calls"""
+    def __init__(self, max_requests_per_minute=14):  # Conservative limit
+        self.max_requests_per_minute = max_requests_per_minute
+        self.request_times = []
+        self.lock = asyncio.Lock()
+    
+    async def wait_for_rate_limit(self):
+        """Wait if necessary to respect rate limits"""
+        async with self.lock:
+            now = time.time()
+            # Remove requests older than 1 minute
+            self.request_times = [t for t in self.request_times if now - t < 60]
+            
+            if len(self.request_times) >= self.max_requests_per_minute:
+                wait_time = 60 - (now - self.request_times[0]) + 1
+                if wait_time > 0:
+                    logger.info(f"⏳ Rate limit protection: waiting {wait_time:.1f}s")
+                    await asyncio.sleep(wait_time)
+                    # Clean up old requests after waiting
+                    now = time.time()
+                    self.request_times = [t for t in self.request_times if now - t < 60]
+            
+            self.request_times.append(now)
+
 class TextTranslator:
     def __init__(self):
         self.client = self._initialize_client()
         self.total_api_calls = 0
         self.total_api_time = 0
         self.last_call_time = 0
+        self.rate_limiter = RateLimitManager()
 
     def _initialize_client(self):
         """Initialize the Gemini client with configuration"""
         try:
-            genai.configure(api_key=settings.gemini_api_key)
+            # Use the new API key
+            genai.configure(api_key="AIzaSyCTITFv0TIazlfLQRn0rX_rYrhXvBJ-oyk")
             # Optimize client for concurrent requests
             model = genai.GenerativeModel('gemini-1.5-flash')
-            print(f"🔧 Gemini client initialized for concurrent translation")
+            logger.info(f"🔧 Gemini client initialized with new API key for concurrent translation")
             return model
         except Exception as e:
             logger.error(f"Failed to initialize Gemini client: {str(e)}")
@@ -44,10 +71,13 @@ class TextTranslator:
         """
         chunk_start_time = time.time()
         
+        # Apply rate limiting before each API call
+        await self.rate_limiter.wait_for_rate_limit()
+        
         # Track rate limiting
         if self.last_call_time > 0:
             time_since_last = chunk_start_time - self.last_call_time
-            print(f"  ⏳ Time since last API call: {time_since_last:.3f}s")
+            logger.info(f"  ⏳ Time since last API call: {time_since_last:.3f}s")
         
         try:
             prompt = (
@@ -60,7 +90,15 @@ class TextTranslator:
             )
             
             api_call_start = time.time()
-            response = await self.client.generate_content_async(prompt)
+            try:
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(self.client.generate_content, prompt),
+                    timeout=30.0
+                )
+            except asyncio.TimeoutError:
+                logger.error(f"⏰ Chunk {chunk_index + 1} translation timed out after 30 seconds")
+                raise TranslationError("Translation request timed out")
+                
             api_call_time = time.time() - api_call_start
             
             # Update tracking
@@ -74,14 +112,20 @@ class TextTranslator:
                 raise TranslationError("Empty response from translation service")
             
             total_time = time.time() - chunk_start_time
-            print(f"  📊 Chunk {chunk_index + 1}: API call {api_call_time:.3f}s, Total {total_time:.3f}s, Length: {len(chunk)} → {len(text)}")
+            logger.info(f"  📊 Chunk {chunk_index + 1}: API call {api_call_time:.3f}s, Total {total_time:.3f}s, Length: {len(chunk)} → {len(text)}")
                 
             return text
             
         except Exception as e:
             chunk_time = time.time() - chunk_start_time
             logger.error(f"Translation failed for chunk {chunk_index + 1} after {chunk_time:.3f}s: {str(e)}")
-            print(f"  ❌ Chunk {chunk_index + 1} failed after {chunk_time:.3f}s: {str(e)}")
+            
+            # Handle rate limiting errors with exponential backoff
+            if "429" in str(e) or "quota" in str(e).lower():
+                logger.error("🚫 Rate limit exceeded - implementing exponential backoff")
+                backoff_time = min(60, 2 ** (chunk_index % 6))  # Max 60s backoff
+                await asyncio.sleep(backoff_time)
+                
             raise TranslationError(f"Failed to translate chunk: {str(e)}")
 
     async def translate_text(self, chunks: List[str], source_lang: str, target_lang: str) -> str:
@@ -124,11 +168,25 @@ class TextTranslator:
             total_chars_out = sum(len(result) for result in results)
             print(f"  📊 Translation Summary:")
             print(f"     Total time: {total_time:.3f}s")
-            print(f"     Avg per chunk: {total_time/len(chunks):.3f}s")
+            
+            # Safe division checks
+            if len(chunks) > 0:
+                print(f"     Avg per chunk: {total_time/len(chunks):.3f}s")
+            
             print(f"     Characters: {total_chars_in} → {total_chars_out}")
-            print(f"     Speed: {total_chars_in/total_time:.0f} chars/sec")
-            print(f"     API Stats: {self.total_api_calls} calls, avg {self.total_api_time/self.total_api_calls:.3f}s per call")
-            print(f"     Concurrency efficiency: {(self.total_api_time/total_time)*100:.1f}% API time vs total time")
+            
+            if total_time > 0:
+                print(f"     Speed: {total_chars_in/total_time:.0f} chars/sec")
+            
+            # Safe division check for API stats
+            if self.total_api_calls > 0:
+                avg_api_time = self.total_api_time/self.total_api_calls
+                if total_time > 0:
+                    api_efficiency = (self.total_api_time/total_time)*100
+                    print(f"     Concurrency efficiency: {api_efficiency:.1f}% API time vs total time")
+                print(f"     API Stats: {self.total_api_calls} calls, avg {avg_api_time:.3f}s per call")
+            else:
+                print(f"     API Stats: No API calls completed")
             
             return "\n".join(results)
             
@@ -138,3 +196,6 @@ class TextTranslator:
             print(f"  ❌ Translation failed after {total_time:.3f}s: {str(e)}")
             raise TranslationError(f"Text translation failed: {str(e)}")
 
+
+# Alias for backward compatibility
+GoogleGeminiTranslator = TextTranslator

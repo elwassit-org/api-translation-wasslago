@@ -6,6 +6,7 @@ from services.websocket_manager import ConnectionManager
 from utils.file_utils import is_digital_pdf
 import os
 import shutil
+import asyncio
 from pathlib import Path
 from config import settings
 import logging
@@ -111,18 +112,48 @@ async def process_pdf_pipeline(
         print(f"   🌍 Translation: {step_times['translation']:.3f}s ({len(text_chunks)} chunks)")
         print(f"   🔧 Reconstruction: {step_times['reconstruction']:.3f}s")
         print(f"   🏁 TOTAL TIME: {total_time:.3f}s")
-        print(f"   💡 Translation was {(step_times['translation']/total_time)*100:.1f}% of total time")
         
-        logger.info(f"PERFORMANCE: Total={total_time:.3f}s, Translation={step_times['translation']:.3f}s ({(step_times['translation']/total_time)*100:.1f}%)")
+        # Safe division check for performance percentage
+        if total_time > 0:
+            translation_percentage = (step_times['translation']/total_time)*100
+            print(f"   💡 Translation was {translation_percentage:.1f}% of total time")
+            logger.info(f"PERFORMANCE: Total={total_time:.3f}s, Translation={step_times['translation']:.3f}s ({translation_percentage:.1f}%)")
+        else:
+            print(f"   💡 Translation performance: {step_times['translation']:.3f}s (total time: {total_time:.3f}s)")
+            logger.info(f"PERFORMANCE: Total={total_time:.3f}s, Translation={step_times['translation']:.3f}s")
         logger.info(f"Final JSON structure length: {len(str(tiptap_json))} characters")
         print(f"📋 Final JSON preview: {str(tiptap_json)[:300]}..." if len(str(tiptap_json)) > 300 else f"📋 Final JSON: {tiptap_json}")
         print(f"✅ PIPELINE COMPLETED SUCCESSFULLY - SOURCE={source_lang} → TARGET={target_lang}")
         logger.info(f"=== PIPELINE SUCCESS ===")
         
-        await manager.send_message({
+        # Send completion message with retry logic
+        completion_message = {
             "status": "completed",
-            "translated_content": tiptap_json
-        }, user_id)
+            "translated_content": tiptap_json,
+            "processing_time": total_time,
+            "performance": {
+                "total_time": total_time,
+                "translation_time": step_times['translation'],
+                "translation_percentage": (step_times['translation']/total_time)*100 if total_time > 0 else 0
+            }
+        }
+        
+        # Try sending the completion message with retries
+        for attempt in range(3):
+            try:
+                success = await manager.send_message(completion_message, user_id)
+                if success:
+                    logger.info(f"✅ Completion message sent successfully to {user_id} on attempt {attempt + 1}")
+                    break
+                else:
+                    logger.warning(f"❌ Failed to send completion message to {user_id} on attempt {attempt + 1}")
+                    if attempt < 2:  # Don't sleep on last attempt
+                        await asyncio.sleep(0.1 * (attempt + 1))  # Exponential backoff
+            except Exception as send_error:
+                logger.error(f"❌ Error sending completion message to {user_id} on attempt {attempt + 1}: {send_error}")
+                if attempt < 2:
+                    await asyncio.sleep(0.1 * (attempt + 1))
+        
     except Exception as e:
         logger.error(f"Pipeline failed for {doc_id}: {str(e)}")
         logger.error(f"Failed with languages: SOURCE={source_lang}, TARGET={target_lang}")

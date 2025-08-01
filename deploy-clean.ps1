@@ -54,15 +54,15 @@ if ($LASTEXITCODE -eq 0) {
 $acrLoginServer = az acr show --name $AcrName --resource-group $ResourceGroupName --query "loginServer" -o tsv
 Write-Host "ACR Login Server: $acrLoginServer" -ForegroundColor Cyan
 
-# Build and push Docker image
-Write-Host "Building Docker image..." -ForegroundColor Blue
+# Tag existing Docker image for ACR
+Write-Host "Tagging existing production image for ACR..." -ForegroundColor Blue
 $fullImageName = "$acrLoginServer/$ImageName" + ":" + $ImageTag
-Write-Host "Building image: $fullImageName" -ForegroundColor Cyan
-docker build -f Dockerfile.production -t $fullImageName .
+Write-Host "Tagging image: wasslago-api:production -> $fullImageName" -ForegroundColor Cyan
+docker tag wasslago-api:production $fullImageName
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "Docker image built successfully" -ForegroundColor Green
+    Write-Host "Docker image tagged successfully" -ForegroundColor Green
 } else {
-    Write-Host "Failed to build Docker image" -ForegroundColor Red
+    Write-Host "Failed to tag Docker image. Make sure wasslago-api:production exists." -ForegroundColor Red
     exit 1
 }
 
@@ -118,7 +118,7 @@ az containerapp create `
     --max-replicas 3 `
     --cpu 2.0 `
     --memory 4Gi `
-    --env-vars GEMINI_API_KEY="AIzaSyAFrQ1RcGXsHgteXhNL6Ee3SNpZuTMICHc" YOLO_MODEL_PATH="/app/models/yolov11x_best.pt" `
+    --env-vars GEMINI_API_KEY="AIzaSyAsy92RUMHwnsm0cy9nik9c2iaIH9vlB14" YOLO_MODEL_PATH="/app/models/yolov11x_best.pt" `
     --query "properties.configuration.ingress.fqdn" -o tsv
 
 if ($LASTEXITCODE -eq 0) {
